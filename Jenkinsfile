@@ -1,13 +1,13 @@
 pipeline {
     agent any
     environment {
-        SERVICE = 'microservicos'
+        SERVICE = 'product'
         NAME = "benisli/${env.SERVICE}"
     }
     stages {
         stage('Dependecies') {
             steps {
-                build job: 'microservicos', wait: true
+                build job: 'product', wait: true
             }
         }
         stage('Build') { 
