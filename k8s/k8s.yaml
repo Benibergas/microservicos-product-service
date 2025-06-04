@@ -1,3 +1,4 @@
+# ==================== SECRETS ====================
 apiVersion: v1
 kind: Secret
 metadata:
@@ -5,13 +6,14 @@ metadata:
   namespace: default
 type: Opaque
 data:
-  postgres-host: cG9zdGdyZXM=
-  postgres-db: c3RvcmU=
-  postgres-user: c3RvcmU=
-  postgres-password: NWVDcjN0
+  postgres-host: cG9zdGdyZXM=             # postgres
+  postgres-db: c3RvcmU=                  # store
+  postgres-user: c3RvcmU=                # store
+  postgres-password: NWVDcjN0            # 5eCr3t
   jwt-secret-key: eXJCQmdZbHZKUWVzbHpGbGdYOU1GWmNjVG9JMmZqUkZxdWFscXVlcmNvaXNh
 
 ---
+# ==================== CONFIGMAP ====================
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -25,6 +27,45 @@ data:
   volume: "./volume"
 
 ---
+# ==================== REDIS DEPLOYMENT ====================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+
+---
+# ==================== REDIS SERVICE ====================
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: default
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
+# ==================== PRODUCT DEPLOYMENT ====================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,70 +84,75 @@ spec:
         app: product
     spec:
       containers:
-      - name: product
-        image: mmp052/product:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: DATABASE_HOST
-          valueFrom:
-            secretKeyRef:
-              name: product-secret 
-              key: postgres-host
-        - name: DATABASE_DB
-          valueFrom:
-            secretKeyRef:
-              name: product-secret
-              key: postgres-db
-        - name: DATABASE_USER
-          valueFrom:
-            secretKeyRef:
-              name: product-secret
-              key: postgres-user
-        - name: DATABASE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: product-secret
-              key: postgres-password
-        - name: JWT_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: product-secret
-              key: jwt-secret-key
-        - name: SPRING_PROFILES_ACTIVE
-          valueFrom:
-            configMapKeyRef:
-              name: product-config
-              key: spring.profiles.active
-        - name: SERVER_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: product-config
-              key: server.port
-        - name: LOGGING_LEVEL_STORE
-          valueFrom:
-            configMapKeyRef:
-              name: product-config
-              key: logging.level.store
-        - name: JWT_ALGORITHM
-          valueFrom:
-            configMapKeyRef:
-              name: product-config
-              key: jwt.algorithm
-        - name: VOLUME
-          valueFrom:
-            configMapKeyRef:
-              name: product-config
-              key: volume
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+        - name: product
+          image: mmp052/product:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: product-secret 
+                  key: postgres-host
+            - name: DATABASE_DB
+              valueFrom:
+                secretKeyRef:
+                  name: product-secret
+                  key: postgres-db
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: product-secret
+                  key: postgres-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: product-secret
+                  key: postgres-password
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: product-secret
+                  key: jwt-secret-key
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: spring.profiles.active
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: server.port
+            - name: LOGGING_LEVEL_STORE
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: logging.level.store
+            - name: JWT_ALGORITHM
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: jwt.algorithm
+            - name: VOLUME
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: volume
+            - name: REDIS_HOST
+              value: redis.default.svc.cluster.local
+            - name: REDIS_PORT
+              value: "6379"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 
 ---
+# ==================== PRODUCT SERVICE ====================
 apiVersion: v1
 kind: Service
 metadata:
@@ -118,7 +164,7 @@ spec:
   selector:
     app: product
   ports:
-  - protocol: TCP
-    port: 8080
-    targetPort: 8080
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
   type: ClusterIP
