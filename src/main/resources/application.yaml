@@ -3,10 +3,10 @@ server:
 
 spring:
   application:
-    name: project
+    name: product
 
   datasource:
-    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT:5432}/${DATABASE_DB:store}
+    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT:5432}/store
     username: ${DATABASE_USER:store}
     password: ${DATABASE_PASSWORD:store}
     driver-class-name: org.postgresql.Driver
@@ -15,8 +15,16 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: project
+        default_schema: product
 
   flyway:
-    schemas: project
+    schemas: product
     baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+  cache:
+    type: redis
